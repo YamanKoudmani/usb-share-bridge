@@ -50,8 +50,10 @@ The GUI lists every USB device with checkboxes — tick the ones you want to
 share, enter the HAOS VM's IP under "Allowed client IP(s)", and click
 **Save & Apply**. It installs usbipd-win for you if it's missing (one
 button), binds newly selected devices, unbinds deselected ones, scopes the
-firewall, and can register the keep-shared scheduled task. For scripted or
-headless use, the same operations are available as commands:
+firewall, can register the keep-shared scheduled task, and has a
+"Start with Windows" option that launches the GUI at logon without a UAC
+prompt (device sharing itself already survives reboot via the task). For
+scripted or headless use, the same operations are available as commands:
 `usb-share.ps1 list/sync/doctor/firewall`.
 
 On the **HAOS VM**: push this repo to GitHub, add it as an add-on repository

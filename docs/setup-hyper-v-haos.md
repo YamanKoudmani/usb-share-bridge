@@ -36,6 +36,11 @@ Then:
 4. Optionally click **Register auto-share task** (or run `Install.ps1`
    once) so devices re-share automatically at boot and every 5 minutes,
    even with the GUI closed.
+5. Optionally tick **Start with Windows** so the GUI itself launches at
+   each logon (elevated via a logon task, so there is no UAC prompt).
+   Note the distinction: device sharing already survives reboots via the
+   auto-share task; this checkbox only controls whether the window opens
+   for you automatically.
 
 For a headless or scripted setup, `Install.ps1` performs the full
 installation (usbipd-win via winget, app copy to

@@ -5,6 +5,7 @@ Set-StrictMode -Version Latest
 
 $script:FirewallRuleName = 'USB Share Bridge (usbipd)'
 $script:UsbIpPort = 3240
+$script:GuiTaskName = 'USB Share Bridge GUI'
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -512,6 +513,67 @@ function Remove-UsbShareShortcut {
 }
 
 # ---------------------------------------------------------------------------
+# GUI autostart (logon task, elevated run-level => no UAC prompt per login)
+# ---------------------------------------------------------------------------
+
+function Test-UsbGuiAutoStart {
+    <#
+    .SYNOPSIS
+    Returns true when the GUI is registered to start at Windows logon.
+    #>
+    [CmdletBinding()]
+    param()
+
+    $task = Get-ScheduledTask -TaskName $script:GuiTaskName -ErrorAction SilentlyContinue
+    return ($null -ne $task)
+}
+
+function Enable-UsbGuiAutoStart {
+    <#
+    .SYNOPSIS
+    Registers a logon scheduled task that launches the GUI elevated.
+    Requires an elevated session and an administrator account (a task
+    with RunLevel Highest cannot silently elevate a standard account).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [string]$TargetScript
+    )
+
+    $user = "$env:USERDOMAIN\$env:USERNAME"
+    $existing = Get-ScheduledTask -TaskName $script:GuiTaskName -ErrorAction SilentlyContinue
+    if ($existing) { Unregister-ScheduledTask -TaskName $script:GuiTaskName -Confirm:$false }
+
+    $action = New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'powershell.exe') -Argument (
+        '-NoProfile -ExecutionPolicy Bypass -Sta -File "{0}"' -f $TargetScript
+    )
+    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+    $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+        -ExecutionTimeLimit (New-TimeSpan -Seconds 0)
+
+    $null = Register-ScheduledTask -TaskName $script:GuiTaskName -Action $action `
+        -Principal $principal -Trigger $trigger -Settings $settings
+    return $script:GuiTaskName
+}
+
+function Disable-UsbGuiAutoStart {
+    <#
+    .SYNOPSIS
+    Removes the GUI logon task. Returns true when a task was removed.
+    #>
+    [CmdletBinding()]
+    param()
+
+    $existing = Get-ScheduledTask -TaskName $script:GuiTaskName -ErrorAction SilentlyContinue
+    if ($existing) {
+        Unregister-ScheduledTask -TaskName $script:GuiTaskName -Confirm:$false
+        return $true
+    }
+    return $false
+}
+
+# ---------------------------------------------------------------------------
 # Firewall scoping
 # ---------------------------------------------------------------------------
 
@@ -636,4 +698,7 @@ Export-ModuleMember -Function `
     Remove-UsbShareShortcut,
     Watch-UsbShare,
     Set-UsbShareFirewall,
-    Get-UsbShareStatus
+    Get-UsbShareStatus,
+    Test-UsbGuiAutoStart,
+    Enable-UsbGuiAutoStart,
+    Disable-UsbGuiAutoStart

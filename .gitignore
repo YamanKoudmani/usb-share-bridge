@@ -2,5 +2,6 @@
 .vscode/
 *.log
 windows/tests/bin/bind-log.txt
+windows/tests/bin/unbind-log.txt
 windows/config.json
 usb_share_bridge/tests/data/usb-bridge-manifest.tsv

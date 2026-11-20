@@ -63,8 +63,10 @@ survives replugging into a different physical port (bus IDs do not).
    - `UsbShareGui.ps1` — WinForms GUI: checkbox device selection (VID:PID
      first, bus-ID pinned when two identical devices are selected),
      one-click usbipd-win install, Save & Apply (config write + bind/
-     unbind diff + firewall), auto-share task registration. Self-elevates;
-     `-SelfCheck` mode validates construction headlessly.
+     unbind diff + firewall), auto-share task registration, and a
+     "Start with Windows" logon task (elevated run-level, so no UAC
+     prompt per login). Self-elevates; `-SelfCheck` mode validates
+     construction headlessly.
    - `Install.ps1` / `Uninstall.ps1` — admin-aware installer: verifies or
      installs `usbipd-win` (winget/MSI), copies the app, registers a
      SYSTEM scheduled task that syncs at boot and every 5 minutes, scopes

@@ -36,6 +36,12 @@ if (Remove-UsbShareShortcut) {
     Write-Host "[--] Start Menu shortcut not found."
 }
 
+if (Disable-UsbGuiAutoStart) {
+    Write-Host "[OK] GUI autostart task removed."
+} else {
+    Write-Host "[--] GUI autostart task not found."
+}
+
 if ($RemoveFiles) {
     foreach ($dir in $InstallDir, (Split-Path -Parent $ConfigPath)) {
         if ((Test-Path -LiteralPath $dir) -and ($dir -like "$env:ProgramFiles*" -or $dir -like "$env:ProgramData*")) {

@@ -128,10 +128,21 @@ $form.Controls.Add($statusLabel)
 
 $taskButton = New-Object System.Windows.Forms.Button
 $taskButton.Text = 'Register auto-share task'
-$taskButton.Location = New-Object System.Drawing.Point(678, 414)
+$taskButton.Location = New-Object System.Drawing.Point(578, 414)
 $taskButton.Size = New-Object System.Drawing.Size(140, 26)
 $taskButton.Anchor = 'Right,Bottom'
 $form.Controls.Add($taskButton)
+
+$autoStartCheckBox = New-Object System.Windows.Forms.CheckBox
+$autoStartCheckBox.Text = 'Start with Windows'
+$autoStartCheckBox.Location = New-Object System.Drawing.Point(340, 418)
+$autoStartCheckBox.Size = New-Object System.Drawing.Size(220, 20)
+$autoStartCheckBox.Anchor = 'Right,Bottom'
+$autoStartCheckBox.TabIndex = 1
+$form.Controls.Add($autoStartCheckBox)
+
+$autoStartToolTip = New-Object System.Windows.Forms.ToolTip
+$autoStartToolTip.SetToolTip($autoStartCheckBox, 'Launch this GUI automatically at Windows logon (elevated, no UAC prompt). Device sharing already survives reboot via the auto-share task; this only controls the window itself.')
 
 $logLabel = New-Object System.Windows.Forms.Label
 $logLabel.Text = 'Activity log'
@@ -236,6 +247,14 @@ $form.Add_Shown({
         Write-GuiLog 'No config yet - check the devices you want to share, enter the HAOS VM IP, then click Save && Apply.'
     }
     Write-GuiLog "Elevated: $(if (Test-UsbShareAdmin) { 'yes' } else { 'NO - bind/unbind will fail' })"
+    try {
+        $script:SuppressAutoStartEvents = $true
+        $autoStartCheckBox.Checked = Test-UsbGuiAutoStart
+    } catch {
+        Write-GuiLog "Could not read autostart state: $($_.Exception.Message)"
+    } finally {
+        $script:SuppressAutoStartEvents = $false
+    }
 })
 
 $refreshButton.Add_Click({
@@ -350,6 +369,24 @@ $taskButton.Add_Click({
         Write-GuiLog "Scheduled task '$taskName' registered - devices re-share at boot and every 5 minutes."
     } catch {
         Write-GuiLog "Could not register scheduled task: $($_.Exception.Message)"
+    }
+})
+
+$autoStartCheckBox.Add_CheckedChanged({
+    if ($script:SuppressAutoStartEvents) { return }
+    try {
+        if ($autoStartCheckBox.Checked) {
+            $null = Enable-UsbGuiAutoStart -TargetScript $PSCommandPath
+            Write-GuiLog 'GUI will now start automatically at Windows logon (elevated, no UAC prompt).'
+        } else {
+            $null = Disable-UsbGuiAutoStart
+            Write-GuiLog 'GUI will no longer start automatically at logon. Device sharing still survives reboot.'
+        }
+    } catch {
+        Write-GuiLog "Could not update autostart: $($_.Exception.Message)"
+        $script:SuppressAutoStartEvents = $true
+        try { $autoStartCheckBox.Checked = Test-UsbGuiAutoStart } catch { }
+        $script:SuppressAutoStartEvents = $false
     }
 })
 

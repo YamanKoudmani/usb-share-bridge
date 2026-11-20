@@ -77,6 +77,9 @@ $threw = $false
 try { $null = Get-UsbShareConfig -Path $badConfig } catch { $threw = $true }
 Assert-True $threw 'invalid VID:PID rejected with an error'
 
+Write-Host '== GUI autostart helpers =='
+Assert-True (-not (Test-UsbGuiAutoStart)) 'GUI autostart task absent by default on a clean system'
+
 Write-Host '== unbind removed devices (GUI deselect) =='
 $selectionConfig = Join-Path $env:TEMP 'usbshare-test-selection.json'
 @'
