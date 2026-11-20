@@ -48,9 +48,21 @@ function Invoke-UsbipdCommand {
         [Parameter(Mandatory)] [string[]]$Arguments
     )
 
-    $output = & $UsbipdPath @Arguments 2>&1 | ForEach-Object { $_.ToString() }
+    # usbipd writes its log output to stderr. In PowerShell 5.1, redirected
+    # stderr becomes ErrorRecords, and a caller running with
+    # ErrorActionPreference = Stop (the GUI and CLI do) would turn harmless
+    # "usbipd: info: ..." lines into terminating errors. Capture with
+    # Continue so callers decide via the exit code instead.
+    $previousEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & $UsbipdPath @Arguments 2>&1 | ForEach-Object { $_.ToString() }
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousEap
+    }
     return [pscustomobject]@{
-        ExitCode = $LASTEXITCODE
+        ExitCode = $exitCode
         Output   = ($output -join "`n")
     }
 }
@@ -220,6 +232,25 @@ function Select-UsbDeviceDescription {
     return 'Unknown USB device'
 }
 
+function Select-UsbDeviceManufacturer {
+    <#
+    .SYNOPSIS
+    Picks the best manufacturer string for display. Windows' "(Standard
+    ...)" driver placeholders carry no device identity, so the usb.ids
+    vendor name wins there.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$PnpManufacturer,
+        [string]$UsbIdsVendor
+    )
+
+    if ($PnpManufacturer -and $PnpManufacturer -notmatch '^\(Standard') { return $PnpManufacturer }
+    if ($UsbIdsVendor) { return $UsbIdsVendor }
+    if ($PnpManufacturer) { return $PnpManufacturer }
+    return $null
+}
+
 function Get-UsbIdsDatabase {
     <#
     .SYNOPSIS
@@ -356,9 +387,9 @@ function Get-UsbDeviceList {
 
             $pnp = $pnpMap[$vidPid]
             $ids = Get-UsbIdsName -VidPid $vidPid
-            $manufacturer = $null
-            if ($pnp -and $pnp.Manufacturer) { $manufacturer = $pnp.Manufacturer }
-            elseif ($ids -and $ids.Vendor) { $manufacturer = $ids.Vendor }
+            $manufacturer = Select-UsbDeviceManufacturer `
+                -PnpManufacturer $(if ($pnp) { $pnp.Manufacturer } else { $null }) `
+                -UsbIdsVendor $(if ($ids) { $ids.Vendor } else { $null })
             $description = Select-UsbDeviceDescription `
                 -UsbipdDescription $rawDescription `
                 -PnpName $(if ($pnp) { $pnp.Name } else { $null }) `
@@ -852,12 +883,14 @@ function Get-UsbShareStatus {
 Export-ModuleMember -Function `
     Test-UsbShareAdmin,
     Find-Usbipd,
+    Invoke-UsbipdCommand,
     Get-UsbipdVersion,
     Get-UsbShareConfigPath,
     Get-UsbShareConfig,
     Get-UsbDeviceList,
     Test-UsbGenericDeviceName,
     Select-UsbDeviceDescription,
+    Select-UsbDeviceManufacturer,
     Get-UsbIdsName,
     Get-UsbPnpInfo,
     Resolve-UsbShareDevice,

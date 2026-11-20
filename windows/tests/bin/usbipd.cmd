@@ -23,9 +23,9 @@ echo unbound %*
 exit /b 0
 
 :detach
+echo usbipd: info: Device with busid '%~3' was already not attached. 1>&2
 echo %* >> "%~dp0unbind-log.txt"
-echo detached %*
-exit /b 0
+exit /b 1
 
 :version
 echo usbipd-win 4.3.0 (fake for tests)

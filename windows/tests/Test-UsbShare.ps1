@@ -101,6 +101,14 @@ $enriched = Get-UsbDeviceList -UsbipdPath $fakeUsbipd
 $sdrEnriched = $enriched | Where-Object { $_.VidPid -eq '0bda:2838' }
 Assert-True ([bool]$sdrEnriched.Manufacturer) 'device rows carry a manufacturer'
 Assert-True ($sdrEnriched.PSObject.Properties.Name -contains 'UsbipdDescription') 'raw usbipd description preserved as its own field'
+Assert-True ((Select-UsbDeviceManufacturer -PnpManufacturer 'Realtek Semiconductor Corp.' -UsbIdsVendor 'Ignored') -eq 'Realtek Semiconductor Corp.') 'real PnP manufacturer wins'
+Assert-True ((Select-UsbDeviceManufacturer -PnpManufacturer '(Standard USB Host Controller)' -UsbIdsVendor 'Realtek Semiconductor Corp.') -eq 'Realtek Semiconductor Corp.') '(Standard) placeholder loses to usb.ids vendor'
+Assert-True ((Select-UsbDeviceManufacturer -PnpManufacturer $null -UsbIdsVendor 'Norelsys') -eq 'Norelsys') 'usb.ids vendor used when PnP manufacturer is empty'
+
+Write-Host '== stderr-safe command invocation =='
+$detachResult = Invoke-UsbipdCommand -UsbipdPath $fakeUsbipd -Arguments @('detach', '--busid', '5-1')
+Assert-True ($detachResult.ExitCode -ne 0) 'usbipd detach non-zero exit code captured under EAP=Stop'
+Assert-True ($detachResult.Output -like '*already not attached*') 'stderr text captured under EAP=Stop'
 
 Write-Host '== GUI autostart helpers =='
 Assert-True (-not (Test-UsbGuiAutoStart)) 'GUI autostart task absent by default on a clean system'
