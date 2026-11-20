@@ -1,0 +1,9 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+
+source /usr/share/usb-bridge/common.sh
+usbb::init_logging
+
+usbb::log info "Bridge service stopping - detaching USB/IP devices."
+usbb::detach_all
+usbb::log info "USB/IP cleanup finished."

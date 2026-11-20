@@ -1,0 +1,31 @@
+configuration:
+  server:
+    name: Server
+    description: >-
+      Address of the USB/IP server on your Windows host. Use "IP" (default
+      port 3240) or "IP:PORT". Over the Internet, use the Tailscale or
+      WireGuard address.
+  devices:
+    name: Devices
+    description: >-
+      Devices to attach. "id" accepts VID:PID (e.g. 0bda:2838, preferred) or
+      a server bus ID (e.g. 1-1). Run "usb-share.ps1 list --json" on Windows
+      to find the VID:PID.
+  poll_interval:
+    name: Poll interval (seconds)
+    description: How often attached devices are verified.
+  attach_delay:
+    name: Attach delay (seconds)
+    description: Pause between attach attempts.
+  attach_retries:
+    name: Attach retries
+    description: Attempts per attach operation (0 disables retries).
+  auto_reattach:
+    name: Automatic reattach
+    description: Reattach devices automatically when they are lost.
+  rediscover_cycles:
+    name: Rediscovery interval
+    description: Re-resolve devices from the server every N polls (handles replugging on the server).
+  log_level:
+    name: Log level
+    description: Verbosity of add-on logs.

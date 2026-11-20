@@ -1,0 +1,15 @@
+{
+  "devices": [
+    {
+      "id": "0bda:2838",
+      "description": "Realtek RTL2838UHIDIR (RTL-SDR)"
+    },
+    {
+      "id": "0658:0200",
+      "description": "Aeotec Z-Stick Gen5"
+    }
+  ],
+  "allowedClients": [],
+  "watchIntervalSeconds": 300,
+  "_comment": "Run 'usb-share.ps1 list --json' to find your device IDs. Put the HAOS VM IP (or its Tailscale/WireGuard IP) in allowedClients so the firewall rule only accepts that host on TCP 3240."
+}

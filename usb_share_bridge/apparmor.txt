@@ -1,0 +1,63 @@
+#include <tunables/global>
+
+profile usb_share_bridge flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Allow the usual file operations; access to USB/IP state lives in /sys and /dev/vhci
+  file,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # Required capabilities for USB/IP and sysfs operations
+  capability net_admin,
+  capability sys_admin,
+  capability sys_module,
+  capability sys_rawio,
+
+  # Required for remounting sysfs in the container
+  mount,
+
+  # s6-overlay runtime
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /sbin/** ix,
+  /run/{s6,s6-rc*,service}/** rwix,
+  /package/** ix,
+  /command/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/{null,tty} rw,
+
+  # bashio and add-on scripts
+  /usr/lib/bashio/** ix,
+  /usr/share/usb-bridge/** r,
+
+  # Runtime data and config
+  /tmp/** rwk,
+  /data/** rw,
+  /usr/share/hwdata/usb.ids r,
+  /etc/modprobe.d/** r,
+  /usr/lib/modprobe.d/** r,
+  /run/modprobe.d/** r,
+  /lib/modules/** r,
+  /usr/lib/modules/** r,
+
+  # USB/IP and kernel interfaces
+  /sys/** r,
+  /sys/bus/usb/devices/** rw,
+  /sys/class/usb_device/** rwk,
+  /sys/module/vhci_hcd/** rw,
+  /dev/vhci rw,
+  /dev/bus/usb/** rw,
+  /proc/** r,
+
+  # Networking for USB/IP operations
+  network inet,
+  network inet6,
+
+  # Logging
+  /dev/kmsg rw,
+  /var/log/** rw,
+}

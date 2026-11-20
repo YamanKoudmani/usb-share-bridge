@@ -1,0 +1,52 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+set -u
+
+source /usr/share/usb-bridge/common.sh
+usbb::init_logging
+
+POLL_INTERVAL="$(usbb::config_default poll_interval 30)"
+ATTACH_DELAY="$(usbb::config_default attach_delay 2)"
+ATTACH_RETRIES="$(usbb::config_default attach_retries 3)"
+REDISCOVER_CYCLES="$(usbb::config_default rediscover_cycles 20)"
+AUTO_REATTACH=false
+if usbb::config_true 'auto_reattach'; then
+    AUTO_REATTACH=true
+fi
+export ATTACH_DELAY ATTACH_RETRIES AUTO_REATTACH
+
+usbb::log info "USB Share Bridge service running (poll=${POLL_INTERVAL}s, reattach=${AUTO_REATTACH})."
+
+usbb::remount_sysfs || true
+
+usbb::discover || true
+usbb::attach_missing "initial"
+
+CYCLE=0
+while true; do
+    sleep "${POLL_INTERVAL}"
+    CYCLE=$((CYCLE + 1))
+
+    # Pick up option edits made via the Supervisor API.
+    USBB_CONFIG_JSON=""
+    usbb::load_config
+
+    # Re-resolve devices when the manifest is empty (first discovery never
+    # succeeded) or periodically (a replug on the server changes bus ids).
+    if [ ! -s "${MANIFEST}" ] || [ $((CYCLE % REDISCOVER_CYCLES)) -eq 0 ]; then
+        usbb::discover || true
+    fi
+
+    if [ ! -s "${MANIFEST}" ]; then
+        usbb::log warning "No devices to attach yet (discovery has not succeeded)."
+        continue
+    fi
+
+    usbb::attach_missing "monitor"
+
+    if [ "${USBB_MISSING}" -gt 0 ]; then
+        # Something was missing - refresh the bus id mapping before the next
+        # pass, in case the device was replugged into another port.
+        usbb::discover || true
+    fi
+done
