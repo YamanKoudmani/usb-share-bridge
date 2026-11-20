@@ -3,6 +3,7 @@
 * text=auto
 *.ps1 text eol=crlf
 *.cmd -text
+windows/usb.ids -text
 *.sh text eol=lf
 usb_share_bridge/Dockerfile text eol=lf
 usb_share_bridge/apparmor.txt text eol=lf

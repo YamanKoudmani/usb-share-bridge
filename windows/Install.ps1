@@ -48,7 +48,7 @@ Write-Host "[OK] usbipd-win found: $usbipd ($(Get-UsbipdVersion -UsbipdPath $usb
 
 # --- 2. copy app -------------------------------------------------------------
 $null = New-Item -ItemType Directory -Force -Path $InstallDir
-foreach ($file in 'usb-share.ps1', 'UsbShare.psm1', 'UsbShareGui.ps1', 'config.example.json') {
+foreach ($file in 'usb-share.ps1', 'UsbShare.psm1', 'UsbShareGui.ps1', 'usb.ids', 'config.example.json') {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $InstallDir $file) -Force
 }
 Write-Host "[OK] app copied to $InstallDir" -ForegroundColor Green

@@ -25,7 +25,7 @@ switch ($Command) {
             $devices | ConvertTo-Json -Depth 3
         } else {
             $devices |
-                Format-Table BusId, VidPid, State, Description, Permission -AutoSize |
+                Format-Table BusId, VidPid, Manufacturer, State, Description -AutoSize |
                 Out-String -Width 220 | Write-Host
             Write-Host "Tip: use the VidPid column as the 'id' in config.json - it survives replugging."
         }

@@ -105,14 +105,16 @@ $listView.View = 'Details'
 $listView.CheckBoxes = $true
 $listView.FullRowSelect = $true
 $listView.HideSelection = $true
+$listView.ShowItemToolTips = $true
 $listView.Location = New-Object System.Drawing.Point(12, 70)
 $listView.Size = New-Object System.Drawing.Size(806, 340)
 $listView.Anchor = 'Top,Left,Right,Bottom'
 foreach ($column in @(
     @{ Name = 'Bus ID'; Width = 70 },
     @{ Name = 'VID:PID'; Width = 90 },
-    @{ Name = 'Device'; Width = 450 },
-    @{ Name = 'State'; Width = 150 }
+    @{ Name = 'Manufacturer'; Width = 180 },
+    @{ Name = 'Device'; Width = 240 },
+    @{ Name = 'State'; Width = 140 }
 )) {
     $null = $listView.Columns.Add($column.Name)
     $listView.Columns[$listView.Columns.Count - 1].Width = $column.Width
@@ -207,8 +209,21 @@ function Update-DeviceList {
     foreach ($device in $devices) {
         $item = New-Object System.Windows.Forms.ListViewItem($device.BusId)
         $null = $item.SubItems.Add($device.VidPid)
+        $manufacturer = if ($device.Manufacturer) { $device.Manufacturer } else { '' }
+        $null = $item.SubItems.Add($manufacturer)
         $null = $item.SubItems.Add($device.Description)
         $null = $item.SubItems.Add($device.State)
+
+        $toolLines = @("Bus ID: $($device.BusId)   VID:PID: $($device.VidPid)")
+        if ($device.Manufacturer) { $toolLines += "Manufacturer: $($device.Manufacturer)" }
+        if ($device.PnpName) { $toolLines += "Windows reports: $($device.PnpName)" }
+        if ($device.UsbipdDescription) { $toolLines += "usbipd reports: $($device.UsbipdDescription)" }
+        if ($device.UsbIdsVendor -or $device.UsbIdsProduct) {
+            $idsText = @($device.UsbIdsVendor, $device.UsbIdsProduct) | Where-Object { $_ }
+            $toolLines += "usb.ids: $($idsText -join ' - ')"
+        }
+        $item.ToolTipText = $toolLines -join "`r`n"
+
         $item.Checked = $false
         if ($config) {
             foreach ($configured in $config.Devices) {
@@ -281,7 +296,7 @@ $applyButton.Add_Click({
             if (-not $item.Checked) { continue }
             $vidpid = $item.SubItems[1].Text
             $busid = $item.Text
-            $description = $item.SubItems[2].Text
+            $description = $item.SubItems[3].Text
             if (-not $seenVidPid.ContainsKey($vidpid)) {
                 $seenVidPid[$vidpid] = $true
                 $devices += [pscustomobject][ordered]@{ id = $vidpid; description = $description }

@@ -83,6 +83,25 @@ $example = Get-UsbShareConfig -Path $exampleConfigPath
 Assert-True ($example.Devices.Count -eq 0) 'starter config ships with an empty device list'
 Assert-True ($example.AllowedClients.Count -eq 0) 'starter config ships with no allowed clients'
 
+Write-Host '== device naming enrichment =='
+$idsSdr = Get-UsbIdsName -VidPid '0bda:2838'
+Assert-True ($null -ne $idsSdr) 'usb.ids resolves 0bda:2838'
+Assert-True ($idsSdr.Vendor -like 'Realtek*') 'usb.ids: 0bda is Realtek'
+Assert-True ($idsSdr.Product -like 'RTL2838*') 'usb.ids: 0bda:2838 product resolves'
+$idsMtk = Get-UsbIdsName -VidPid '0e8d:7902'
+Assert-True ($idsMtk.Vendor -like 'MediaTek*') 'usb.ids: 0e8d is MediaTek'
+Assert-True (-not $idsMtk.Product) 'usb.ids: 0e8d:7902 has no product name (vendor still known)'
+$best1 = Select-UsbDeviceDescription -UsbipdDescription 'Bulk-In, Interface' -PnpName 'Realtek RTL2832UHIDIR'
+Assert-True ($best1 -eq 'Realtek RTL2832UHIDIR') 'Windows name beats generic usbipd string'
+$best2 = Select-UsbDeviceDescription -UsbipdDescription 'MediaTek Bluetooth Adapter' -PnpName 'USB Device'
+Assert-True ($best2 -eq 'MediaTek Bluetooth Adapter') 'usbipd description beats generic Windows name'
+$best3 = Select-UsbDeviceDescription -UsbipdDescription 'USB' -PnpName 'USB Input Device' -UsbIdsProduct 'NS1066'
+Assert-True ($best3 -eq 'NS1066') 'usb.ids product beats all-generic names'
+$enriched = Get-UsbDeviceList -UsbipdPath $fakeUsbipd
+$sdrEnriched = $enriched | Where-Object { $_.VidPid -eq '0bda:2838' }
+Assert-True ([bool]$sdrEnriched.Manufacturer) 'device rows carry a manufacturer'
+Assert-True ($sdrEnriched.PSObject.Properties.Name -contains 'UsbipdDescription') 'raw usbipd description preserved as its own field'
+
 Write-Host '== GUI autostart helpers =='
 Assert-True (-not (Test-UsbGuiAutoStart)) 'GUI autostart task absent by default on a clean system'
 

@@ -6,6 +6,8 @@ Set-StrictMode -Version Latest
 $script:FirewallRuleName = 'USB Share Bridge (usbipd)'
 $script:UsbIpPort = 3240
 $script:GuiTaskName = 'USB Share Bridge GUI'
+$script:UsbIdsPath = Join-Path $PSScriptRoot 'usb.ids'
+$script:UsbIdsCache = $null
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -175,6 +177,144 @@ function Get-UsbShareConfig {
 # Device list (usbipd list)
 # ---------------------------------------------------------------------------
 
+function Test-UsbGenericDeviceName {
+    <#
+    .SYNOPSIS
+    True for placeholder names like "USB Device" or "Bulk-In, Interface"
+    that carry no information about what the device actually is.
+    #>
+    [CmdletBinding()]
+    param([string]$Name)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) { return $true }
+    $trimmed = $Name.Trim()
+    $genericNames = @(
+        'USB Device', 'USB', 'USB Input Device', 'USB Composite Device',
+        'Composite USB Device', 'Unknown USB Device', 'USB Serial Device'
+    )
+    if ($genericNames -contains $trimmed) { return $true }
+    if ($trimmed -match '^(Bulk[- ]In|Interface|Unknown)') { return $true }
+    return $false
+}
+
+function Select-UsbDeviceDescription {
+    <#
+    .SYNOPSIS
+    Picks the most informative description for a USB device.
+    Priority: a non-generic Windows (PnP) name, then the usbipd string,
+    then the usb.ids product name; anything beats nothing.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$UsbipdDescription,
+        [string]$PnpName,
+        [string]$UsbIdsProduct
+    )
+
+    if ($PnpName -and -not (Test-UsbGenericDeviceName $PnpName)) { return $PnpName }
+    if ($UsbipdDescription -and -not (Test-UsbGenericDeviceName $UsbipdDescription)) { return $UsbipdDescription }
+    if ($UsbIdsProduct -and -not (Test-UsbGenericDeviceName $UsbIdsProduct)) { return $UsbIdsProduct }
+    foreach ($candidate in @($PnpName, $UsbipdDescription, $UsbIdsProduct)) {
+        if ($candidate) { return $candidate }
+    }
+    return 'Unknown USB device'
+}
+
+function Get-UsbIdsDatabase {
+    <#
+    .SYNOPSIS
+    Parses the bundled usb.ids database (same public database used by
+    Linux) into vendor/product hashtables. Cached after first load.
+    #>
+    [CmdletBinding()]
+    param()
+
+    if ($null -ne $script:UsbIdsCache) { return $script:UsbIdsCache }
+    $vendors = @{}
+    $products = @{}
+    $currentVendor = $null
+
+    if (Test-Path -LiteralPath $script:UsbIdsPath -PathType Leaf) {
+        foreach ($line in [System.IO.File]::ReadLines($script:UsbIdsPath)) {
+            if ($line -eq '') { continue }
+            if ($line.StartsWith('#')) { continue }
+            if ($line.Length -lt 4) { continue }
+            if ($line.StartsWith("`t`t")) { continue }
+            if ($line[0] -eq "`t") {
+                $trimmed = $line.TrimStart()
+                if ($trimmed.Length -ge 4 -and $currentVendor) {
+                    $products["$currentVendor/$($trimmed.Substring(0, 4))"] = $trimmed.Substring(4).Trim()
+                }
+            } else {
+                $currentVendor = $line.Substring(0, 4).ToLowerInvariant()
+                $vendors[$currentVendor] = $line.Substring(4).Trim()
+            }
+        }
+    }
+
+    $script:UsbIdsCache = @{ Vendors = $vendors; Products = $products }
+    return $script:UsbIdsCache
+}
+
+function Get-UsbIdsName {
+    <#
+    .SYNOPSIS
+    Resolves a VID:PID against the bundled usb.ids database.
+    Returns $null, or an object with Vendor and Product (either may be
+    $null when the database lacks that entry).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [string]$VidPid
+    )
+
+    $parts = $VidPid.ToLowerInvariant() -split ':'
+    if ($parts.Count -ne 2) { return $null }
+    $db = Get-UsbIdsDatabase
+    $vendor = $db.Vendors[$parts[0]]
+    $product = $db.Products["$($parts[0])/$($parts[1])"]
+    if (-not $vendor -and -not $product) { return $null }
+    return [pscustomobject]@{ Vendor = $vendor; Product = $product }
+}
+
+function Get-UsbPnpInfo {
+    <#
+    .SYNOPSIS
+    Maps VID:PID to Windows' own PnP knowledge (friendly name and
+    manufacturer) via WMI. Harmless read-only; returns an empty map if
+    WMI is unavailable.
+    #>
+    [CmdletBinding()]
+    param()
+
+    $map = @{}
+    try {
+        $entities = Get-CimInstance -ClassName Win32_PnPEntity -ErrorAction Stop
+    } catch {
+        return $map
+    }
+
+    foreach ($entity in $entities) {
+        if (-not $entity.PNPDeviceID) { continue }
+        if ($entity.PNPDeviceID -notmatch '^USB\\VID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})') { continue }
+        $key = "$($Matches[1]):$($Matches[2])".ToLowerInvariant()
+        $name = [string]$entity.Name
+        $entry = [pscustomobject]@{
+            Name         = $name
+            Manufacturer = [string]$entity.Manufacturer
+            InstanceId   = $entity.PNPDeviceID
+        }
+        $existing = $map[$key]
+        if (-not $existing) {
+            $map[$key] = $entry
+        } elseif ((Test-UsbGenericDeviceName $existing.Name) -and -not (Test-UsbGenericDeviceName $name)) {
+            # Prefer the more descriptive entry when a VID:PID has several.
+            $map[$key] = $entry
+        }
+    }
+    return $map
+}
+
 function Get-UsbDeviceList {
     <#
     .SYNOPSIS
@@ -202,18 +342,40 @@ function Get-UsbDeviceList {
     $rowPattern = '^\s*(\d[\d.\-]*)\s+([0-9A-Fa-f]{4}:[0-9A-Fa-f]{4})\s+(.+?)\s+(Not shared|Shared|Attached|Persisted)\s*(.*)$'
     $section = 'Connected'
     $devices = @()
+    $pnpMap = Get-UsbPnpInfo
 
     foreach ($line in ($result.Output -split "`r?`n")) {
         if ($line -match '^\s*Connected:') { $section = 'Connected'; continue }
         if ($line -match '^\s*Persisted:') { $section = 'Persisted'; continue }
         if ($line -match $rowPattern) {
+            $busId = $Matches[1]
+            $vidPid = $Matches[2].ToLowerInvariant()
+            $rawDescription = $Matches[3].Trim()
+            $state = $Matches[4]
+            $permission = $Matches[5].Trim()
+
+            $pnp = $pnpMap[$vidPid]
+            $ids = Get-UsbIdsName -VidPid $vidPid
+            $manufacturer = $null
+            if ($pnp -and $pnp.Manufacturer) { $manufacturer = $pnp.Manufacturer }
+            elseif ($ids -and $ids.Vendor) { $manufacturer = $ids.Vendor }
+            $description = Select-UsbDeviceDescription `
+                -UsbipdDescription $rawDescription `
+                -PnpName $(if ($pnp) { $pnp.Name } else { $null }) `
+                -UsbIdsProduct $(if ($ids) { $ids.Product } else { $null })
+
             $devices += [pscustomobject]@{
-                BusId       = $Matches[1]
-                VidPid      = $Matches[2].ToLowerInvariant()
-                Description = $Matches[3].Trim()
-                State       = $Matches[4]
-                Permission  = $Matches[5].Trim()
-                Section     = $section
+                BusId             = $busId
+                VidPid            = $vidPid
+                Description       = $description
+                UsbipdDescription = $rawDescription
+                Manufacturer      = $manufacturer
+                PnpName           = $(if ($pnp) { $pnp.Name } else { $null })
+                UsbIdsVendor      = $(if ($ids) { $ids.Vendor } else { $null })
+                UsbIdsProduct     = $(if ($ids) { $ids.Product } else { $null })
+                State             = $state
+                Permission        = $permission
+                Section           = $section
             }
         }
     }
@@ -694,6 +856,10 @@ Export-ModuleMember -Function `
     Get-UsbShareConfigPath,
     Get-UsbShareConfig,
     Get-UsbDeviceList,
+    Test-UsbGenericDeviceName,
+    Select-UsbDeviceDescription,
+    Get-UsbIdsName,
+    Get-UsbPnpInfo,
     Resolve-UsbShareDevice,
     Sync-UsbShare,
     Install-UsbipdWin,
