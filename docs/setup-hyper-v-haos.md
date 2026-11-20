@@ -20,6 +20,19 @@ asks for elevation itself):
 .\UsbShareGui.ps1
 ```
 
+If you downloaded the repo as a ZIP, Windows marks the extracted scripts
+as "from the internet" and the default execution policy will block them
+with a "not digitally signed" error. Unblock the repo once (from its root
+folder) and everything runs normally afterwards:
+
+```powershell
+Get-ChildItem -Path . -Recurse -File | Unblock-File
+```
+
+For a one-off run without unblocking, use
+`powershell -ExecutionPolicy Bypass -File <script>`. Cloning the repo
+with git instead of downloading the ZIP avoids the block entirely.
+
 If usbipd-win isn't installed yet, the GUI shows an **Install usbipd-win**
 button — click it once and the winget installer runs in a console window.
 

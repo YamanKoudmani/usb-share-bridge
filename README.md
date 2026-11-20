@@ -46,6 +46,18 @@ cd windows
 .\UsbShareGui.ps1
 ```
 
+> **Downloaded this repo as a ZIP?** Windows marks extracted files as
+> "from the internet", which blocks unsigned scripts under the default
+> execution policy. Unblock them once, then run normally:
+>
+> ```powershell
+> Get-ChildItem -Path . -Recurse -File | Unblock-File
+> ```
+>
+> (Run that from the repo root, or invoke scripts one-off with
+> `powershell -ExecutionPolicy Bypass -File <script>`.) Cloning with git
+> avoids the issue entirely.
+
 The GUI lists every USB device with checkboxes — tick the ones you want to
 share, enter the HAOS VM's IP under "Allowed client IP(s)", and click
 **Save & Apply**. It installs usbipd-win for you if it's missing (one
