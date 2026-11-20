@@ -39,34 +39,25 @@ flowchart LR
 
 ## Quick start
 
-On the **Windows host**, launch the GUI (it asks for elevation):
+On the **Windows host**:
 
-```powershell
-cd windows
-.\UsbShareGui.ps1
-```
+1. On GitHub: **Code → Download ZIP**, then extract the archive.
+2. Double-click **Setup.cmd** in the extracted folder and approve the UAC
+   prompt.
 
-> **Downloaded this repo as a ZIP?** Windows marks extracted files as
-> "from the internet", which blocks unsigned scripts under the default
-> execution policy. Unblock them once, then run normally:
->
-> ```powershell
-> Get-ChildItem -Path . -Recurse -File | Unblock-File
-> ```
->
-> (Run that from the repo root, or invoke scripts one-off with
-> `powershell -ExecutionPolicy Bypass -File <script>`.) Cloning with git
-> avoids the issue entirely.
+That's the whole install. Setup.cmd is a batch file, so the execution
+policy never blocks it: it self-elevates, clears the "downloaded from the
+internet" marker Windows put on the extracted files, installs usbipd-win
+via winget, installs the app to `C:\Program Files\USBShare`, registers the
+auto-share task, creates the Start Menu shortcut, and then opens the GUI.
+The downloaded folder can be deleted afterwards.
 
-The GUI lists every USB device with checkboxes — tick the ones you want to
-share, enter the HAOS VM's IP under "Allowed client IP(s)", and click
-**Save & Apply**. It installs usbipd-win for you if it's missing (one
-button), binds newly selected devices, unbinds deselected ones, scopes the
-firewall, can register the keep-shared scheduled task, and has a
-"Start with Windows" option that launches the GUI at logon without a UAC
-prompt (device sharing itself already survives reboot via the task). For
-scripted or headless use, the same operations are available as commands:
-`usb-share.ps1 list/sync/doctor/firewall`.
+When the GUI opens: tick the USB devices you want to share, enter the
+HAOS VM's IP under "Allowed client IP(s)", and click **Save & Apply**.
+Tick **Start with Windows** to have the GUI open at each logon without a
+UAC prompt. Prefer a terminal? The same operations are available as
+commands (`usb-share.ps1 list/sync/doctor/firewall`), and headless setup
+works via `powershell -ExecutionPolicy Bypass -File windows\Install.ps1`.
 
 On the **HAOS VM**: push this repo to GitHub, add it as an add-on repository
 in Home Assistant (Settings → Add-ons → Add-on Store → ⋮ → Repositories),
@@ -74,7 +65,6 @@ install **USB Share Bridge**, set `server` to the Windows host IP and the
 same device IDs (use the VID:PID values shown in the GUI), then start it.
 Devices appear in Settings → System → Hardware and work like local USB
 devices.
-Settings → System → Hardware and work like local USB devices.
 
 Full instructions, Internet/tunnel setup, and troubleshooting:
 [docs/setup-hyper-v-haos.md](docs/setup-hyper-v-haos.md).

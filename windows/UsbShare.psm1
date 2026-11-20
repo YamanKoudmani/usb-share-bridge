@@ -118,7 +118,7 @@ function Get-UsbShareConfig {
     $vidPidPattern = '^[0-9A-Fa-f]{4}:[0-9A-Fa-f]{4}$'
     $busIdPattern  = '^\d[\d.\-]*$'
 
-    if (-not $config.devices) {
+    if ($null -eq $config.devices) {
         throw "Config file '$resolved' has no 'devices' array."
     }
 

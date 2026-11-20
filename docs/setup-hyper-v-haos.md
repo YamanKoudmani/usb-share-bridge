@@ -13,25 +13,18 @@ devices) plugged into the host.
 
 ## 1. Windows host — install and share devices
 
-Open PowerShell in the repo's `windows/` folder and launch the GUI (it
-asks for elevation itself):
+Double-click **Setup.cmd** in the extracted (or cloned) repo folder and
+approve the UAC prompt. That is the whole install: Setup.cmd is a batch
+file, so the execution policy never blocks it. It self-elevates, clears
+the "downloaded from the internet" marker that ZIP extracts carry, runs
+the full installation (usbipd-win via winget, app copy to
+`C:\Program Files\USBShare`, auto-share task, firewall, Start Menu
+shortcut) and then opens the GUI. The downloaded folder can be deleted
+afterwards.
 
-```powershell
-.\UsbShareGui.ps1
-```
-
-If you downloaded the repo as a ZIP, Windows marks the extracted scripts
-as "from the internet" and the default execution policy will block them
-with a "not digitally signed" error. Unblock the repo once (from its root
-folder) and everything runs normally afterwards:
-
-```powershell
-Get-ChildItem -Path . -Recurse -File | Unblock-File
-```
-
-For a one-off run without unblocking, use
-`powershell -ExecutionPolicy Bypass -File <script>`. Cloning the repo
-with git instead of downloading the ZIP avoids the block entirely.
+Prefer a terminal? `powershell -ExecutionPolicy Bypass -File
+windows\Install.ps1` from an elevated console does the same (the Bypass
+flag sidesteps the execution policy that blocks ZIP-extracted scripts).
 
 If usbipd-win isn't installed yet, the GUI shows an **Install usbipd-win**
 button — click it once and the winget installer runs in a console window.

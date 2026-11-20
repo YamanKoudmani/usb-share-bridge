@@ -77,6 +77,12 @@ $threw = $false
 try { $null = Get-UsbShareConfig -Path $badConfig } catch { $threw = $true }
 Assert-True $threw 'invalid VID:PID rejected with an error'
 
+Write-Host '== starter config =='
+$exampleConfigPath = Join-Path (Split-Path -Parent $modulePath) 'config.example.json'
+$example = Get-UsbShareConfig -Path $exampleConfigPath
+Assert-True ($example.Devices.Count -eq 0) 'starter config ships with an empty device list'
+Assert-True ($example.AllowedClients.Count -eq 0) 'starter config ships with no allowed clients'
+
 Write-Host '== GUI autostart helpers =='
 Assert-True (-not (Test-UsbGuiAutoStart)) 'GUI autostart task absent by default on a clean system'
 

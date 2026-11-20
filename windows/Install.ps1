@@ -12,7 +12,8 @@ param(
     [string]$ConfigPath = (Join-Path $env:ProgramData 'USBShare\config.json'),
     [switch]$SkipWinget,
     [switch]$SkipTask,
-    [switch]$SkipFirewall
+    [switch]$SkipFirewall,
+    [switch]$LaunchGui
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,9 +81,16 @@ if (-not $SkipFirewall) {
 }
 
 Write-Host ''
-Write-Host 'Done. Useful next steps:' -ForegroundColor Cyan
-Write-Host "  cd $InstallDir"
-Write-Host '  .\usb-share.ps1 list --json       # find your devices'' VidPid ids'
-Write-Host "  notepad $ConfigPath"
-Write-Host '  .\usb-share.ps1 doctor            # verify everything'
-Write-Host "  .\usb-share.ps1 sync              # share the devices now"
+Write-Host 'Done. The GUI is the easiest way to finish:' -ForegroundColor Cyan
+Write-Host '  1. Tick the USB devices you want to share'
+Write-Host '  2. Enter the HAOS VM IP under "Allowed client IP(s)"'
+Write-Host '  3. Click "Save & Apply"'
+Write-Host "  (CLI equivalents: cd $InstallDir; .\usb-share.ps1 list/sync/doctor)"
+
+if ($LaunchGui) {
+    Write-Host ''
+    Write-Host 'Launching the GUI...' -ForegroundColor Cyan
+    Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList (
+        '-NoProfile -ExecutionPolicy Bypass -Sta -File "{0}"' -f (Join-Path $InstallDir 'UsbShareGui.ps1')
+    )
+}
