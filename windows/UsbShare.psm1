@@ -441,9 +441,13 @@ function Install-UsbipdWin {
 
     $arguments = @()
     if ($Interactive) { $arguments += '--interactive' }
-    $arguments += @('--exact', 'usbipd.usbipd-win')
+    $arguments += @('--exact', 'dorssel.usbipd-win')
     & $winget.Source install @arguments
-    return (Find-Usbipd)
+    $installed = Find-Usbipd
+    if (-not $installed) {
+        Write-Warning 'winget finished but usbipd.exe was not found. Try: winget source update, then re-run.'
+    }
+    return $installed
 }
 
 function Register-UsbShareScheduledTask {

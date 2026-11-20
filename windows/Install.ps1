@@ -28,7 +28,7 @@ if (-not $usbipd -and -not $SkipWinget) {
     $winget = Get-Command 'winget.exe' -ErrorAction SilentlyContinue
     if ($winget) {
         Write-Host 'usbipd-win not found; installing via winget (interactive)...' -ForegroundColor Yellow
-        & $winget.Source install --interactive --exact usbipd.usbipd-win
+        & $winget.Source install --interactive --exact dorssel.usbipd-win
         $usbipd = Find-Usbipd
     } else {
         Write-Host 'winget not available.' -ForegroundColor Yellow
@@ -38,7 +38,8 @@ if (-not $usbipd) {
     throw @(
         'usbipd-win is required but was not found.',
         'Install it manually from https://github.com/dorssel/usbipd-win/releases',
-        '(or run: winget install --interactive --exact usbipd.usbipd-win)',
+        '(or run: winget install --interactive --exact dorssel.usbipd-win)',
+        'If winget cannot find the package, run: winget source update',
         'Then re-run this installer.'
     ) -join "`n"
 }

@@ -350,7 +350,7 @@ $installButton.Add_Click({
             Write-GuiLog 'winget not found. Install manually: https://github.com/dorssel/usbipd-win/releases'
             return
         }
-        Start-Process -FilePath $winget.Source -ArgumentList 'install', '--interactive', '--exact', 'usbipd.usbipd-win' -Wait
+        Start-Process -FilePath $winget.Source -ArgumentList 'install', '--interactive', '--exact', 'dorssel.usbipd-win' -Wait
         Update-UsbipdPresence
         Update-DeviceList
         if ($script:UsbipdPath) {

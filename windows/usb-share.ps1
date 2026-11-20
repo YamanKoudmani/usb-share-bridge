@@ -65,7 +65,7 @@ switch ($Command) {
         $problems = @()
         $usbipd = Find-Usbipd -Path $UsbipdPath
         if (-not $usbipd) {
-            $problems += 'usbipd.exe not found. Install it first: winget install --interactive --exact usbipd.usbipd-win'
+            $problems += 'usbipd.exe not found. Install it first: winget install --interactive --exact dorssel.usbipd-win'
         } else {
             Write-Host "[OK] usbipd found: $usbipd ($(Get-UsbipdVersion -UsbipdPath $usbipd))"
         }
