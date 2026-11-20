@@ -39,21 +39,27 @@ flowchart LR
 
 ## Quick start
 
-On the **Windows host** (elevated PowerShell):
+On the **Windows host**, launch the GUI (it asks for elevation):
 
 ```powershell
 cd windows
-.\Install.ps1                    # installs usbipd-win via winget if missing
-.\usb-share.ps1 list --json      # find your device VID:PID
-notepad C:\ProgramData\USBShare\config.json   # put ids + HAOS VM IP in allowedClients
-.\usb-share.ps1 doctor           # verify everything
-.\usb-share.ps1 sync             # share the devices now
+.\UsbShareGui.ps1
 ```
+
+The GUI lists every USB device with checkboxes — tick the ones you want to
+share, enter the HAOS VM's IP under "Allowed client IP(s)", and click
+**Save & Apply**. It installs usbipd-win for you if it's missing (one
+button), binds newly selected devices, unbinds deselected ones, scopes the
+firewall, and can register the keep-shared scheduled task. For scripted or
+headless use, the same operations are available as commands:
+`usb-share.ps1 list/sync/doctor/firewall`.
 
 On the **HAOS VM**: push this repo to GitHub, add it as an add-on repository
 in Home Assistant (Settings → Add-ons → Add-on Store → ⋮ → Repositories),
-install **USB Share Bridge**, set `server` to the Windows host IP and list
-the same devices, then start it. Devices appear in
+install **USB Share Bridge**, set `server` to the Windows host IP and the
+same device IDs (use the VID:PID values shown in the GUI), then start it.
+Devices appear in Settings → System → Hardware and work like local USB
+devices.
 Settings → System → Hardware and work like local USB devices.
 
 Full instructions, Internet/tunnel setup, and troubleshooting:

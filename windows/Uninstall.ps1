@@ -11,6 +11,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'UsbShare.psm1') -Force
 $TaskName = 'USB Share Bridge Sync'
 
 $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -27,6 +28,12 @@ if ($rule) {
     Write-Host "[OK] scoped firewall rule removed."
 } else {
     Write-Host "[--] scoped firewall rule not found."
+}
+
+if (Remove-UsbShareShortcut) {
+    Write-Host "[OK] Start Menu shortcut removed."
+} else {
+    Write-Host "[--] Start Menu shortcut not found."
 }
 
 if ($RemoveFiles) {

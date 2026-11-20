@@ -6,6 +6,7 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $modulePath = Join-Path (Split-Path -Parent $here) 'UsbShare.psm1'
 $fakeUsbipd = Join-Path $here 'bin\usbipd.cmd'
 $bindLog = Join-Path $here 'bin\bind-log.txt'
+$unbindLog = Join-Path $here 'bin\unbind-log.txt'
 
 Import-Module $modulePath -Force
 
@@ -21,6 +22,7 @@ function Assert-True {
 }
 
 if (Test-Path -LiteralPath $bindLog) { Remove-Item -LiteralPath $bindLog -Force }
+if (Test-Path -LiteralPath $unbindLog) { Remove-Item -LiteralPath $unbindLog -Force }
 
 Write-Host '== list parsing =='
 $devices = Get-UsbDeviceList -UsbipdPath $fakeUsbipd
@@ -74,6 +76,29 @@ $badConfig = Join-Path $env:TEMP 'usbshare-test-bad.json'
 $threw = $false
 try { $null = Get-UsbShareConfig -Path $badConfig } catch { $threw = $true }
 Assert-True $threw 'invalid VID:PID rejected with an error'
+
+Write-Host '== unbind removed devices (GUI deselect) =='
+$selectionConfig = Join-Path $env:TEMP 'usbshare-test-selection.json'
+@'
+{
+  "devices": [
+    { "id": "10c4:ea60", "description": "CP210x serial" }
+  ],
+  "allowedClients": []
+}
+'@ | Set-Content -LiteralPath $selectionConfig -Encoding UTF8
+$null = Sync-UsbShare -ConfigPath $selectionConfig -UsbipdPath $fakeUsbipd -Quiet -AssumeElevated -UnbindRemoved
+$unbindCalls = @()
+if (Test-Path -LiteralPath $unbindLog) { $unbindCalls = @(Get-Content -LiteralPath $unbindLog) }
+$unbindTargeted = @($unbindCalls | Where-Object { $_ -match '--busid 1-3' })
+$unbindSkipped = @($unbindCalls | Where-Object { $_ -match '--busid 1-1' })
+Assert-True ($unbindTargeted.Count -ge 1) 'attached-but-deselected device is unbound'
+Assert-True ($unbindCalls.Count -ge 2) 'attached device is detached before unbind'
+Assert-True ($unbindSkipped.Count -eq 0) 'not-shared deselected device is left alone'
+$bindCalls2 = if (Test-Path -LiteralPath $bindLog) { @(Get-Content -LiteralPath $bindLog) } else { @() }
+Assert-True ($bindCalls2.Count -eq 1) 'no extra bind executed during unbind pass'
+
+Remove-Item -LiteralPath $configFile, $badConfig, $selectionConfig -Force -ErrorAction SilentlyContinue
 
 Remove-Item -LiteralPath $configFile, $badConfig -Force -ErrorAction SilentlyContinue
 if ($script:Failures -gt 0) {

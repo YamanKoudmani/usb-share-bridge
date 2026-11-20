@@ -46,10 +46,13 @@ Write-Host "[OK] usbipd-win found: $usbipd ($(Get-UsbipdVersion -UsbipdPath $usb
 
 # --- 2. copy app -------------------------------------------------------------
 $null = New-Item -ItemType Directory -Force -Path $InstallDir
-foreach ($file in 'usb-share.ps1', 'UsbShare.psm1', 'config.example.json') {
+foreach ($file in 'usb-share.ps1', 'UsbShare.psm1', 'UsbShareGui.ps1', 'config.example.json') {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $InstallDir $file) -Force
 }
 Write-Host "[OK] app copied to $InstallDir" -ForegroundColor Green
+
+$null = New-UsbShareShortcut -TargetScript (Join-Path $InstallDir 'UsbShareGui.ps1')
+Write-Host "[OK] Start Menu shortcut created: 'USB Share Bridge'" -ForegroundColor Green
 
 # --- 3. config ---------------------------------------------------------------
 $configDir = Split-Path -Parent $ConfigPath
@@ -65,22 +68,7 @@ if (-not (Test-Path -LiteralPath $ConfigPath)) {
 
 # --- 4. scheduled task --------------------------------------------------------
 if (-not $SkipTask) {
-    $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    if ($existing) { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false }
-
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument (
-        '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" sync' -f (Join-Path $InstallDir 'usb-share.ps1')
-    )
-    $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-    $startupTrigger = New-ScheduledTaskTrigger -AtStartup
-    $repeatTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
-        -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
-    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
-        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-        -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
-
-    $null = Register-ScheduledTask -TaskName $TaskName -Action $action `
-        -Principal $principal -Trigger $startupTrigger, $repeatTrigger -Settings $settings
+    $null = Register-UsbShareScheduledTask -InstallDir $InstallDir
     Write-Host "[OK] scheduled task '$TaskName' registered (at boot + every 5 min as SYSTEM)" -ForegroundColor Green
 }
 

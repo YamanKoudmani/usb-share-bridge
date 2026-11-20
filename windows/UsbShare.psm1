@@ -262,6 +262,7 @@ function Sync-UsbShare {
         [string]$ConfigPath,
         [string]$UsbipdPath,
         [switch]$DryRun,
+        [switch]$UnbindRemoved,
         [switch]$AssumeElevated,
         [switch]$Quiet
     )
@@ -276,8 +277,10 @@ function Sync-UsbShare {
     $isAdmin = $(if ($AssumeElevated) { $true } else { Test-UsbShareAdmin })
 
     $results = @()
+    $matchedBusIds = @{}
     foreach ($configured in $config.Devices) {
         $resolution = Resolve-UsbShareDevice -ConfigDevice $configured -DeviceList $deviceList
+        if ($resolution.Device) { $matchedBusIds[$resolution.Device.BusId] = $true }
         $result = [pscustomobject]@{
             Device  = $configured.Description
             BusId   = $null
@@ -334,6 +337,46 @@ function Sync-UsbShare {
         $results += $result
     }
 
+    if ($UnbindRemoved) {
+        # Uncheck in the GUI == remove from config == stop sharing it here.
+        foreach ($live in $deviceList) {
+            if ($matchedBusIds.ContainsKey($live.BusId)) { continue }
+            if ($live.State -notin @('Shared', 'Attached')) { continue }
+
+            $result = [pscustomobject]@{
+                Device  = $live.Description
+                BusId   = $live.BusId
+                Match   = 'none'
+                State   = $live.State
+                Action  = 'unbind'
+                Result  = 'ok'
+                Message = ''
+            }
+            if ($DryRun) {
+                $result.Result = 'dry-run'
+                $result.Message = "Would unbind (stop sharing) bus $($live.BusId)"
+            } elseif (-not $isAdmin) {
+                $result.Result = 'error'
+                $result.Message = 'Unbinding requires an elevated session. Re-run as Administrator.'
+            } else {
+                if ($live.State -eq 'Attached') {
+                    # A client (e.g. the HAOS add-on) is using the device.
+                    # Detach it first so the unbind can succeed.
+                    $null = Invoke-UsbipdCommand -UsbipdPath $usbipd -Arguments @('detach', '--busid', $live.BusId)
+                }
+                $unbind = Invoke-UsbipdCommand -UsbipdPath $usbipd -Arguments @('unbind', '--busid', $live.BusId)
+                if ($unbind.ExitCode -eq 0) {
+                    $result.Result = 'unbound'
+                    $result.Message = "usbipd unbind --busid $($live.BusId) -> no longer shared"
+                } else {
+                    $result.Result = 'error'
+                    $result.Message = "usbipd unbind failed (exit $($unbind.ExitCode)): $($unbind.Output)"
+                }
+            }
+            $results += $result
+        }
+    }
+
     if (-not $Quiet) {
         foreach ($r in $results) {
             $line = "[{0}] {1}{2}: {3}" -f $r.Result.ToUpperInvariant(), $r.Device,
@@ -371,6 +414,101 @@ function Watch-UsbShare {
         }
         Start-Sleep -Seconds $interval
     }
+}
+
+# ---------------------------------------------------------------------------
+# Setup actions (shared by Install.ps1 and the GUI)
+# ---------------------------------------------------------------------------
+
+function Install-UsbipdWin {
+    <#
+    .SYNOPSIS
+    Installs usbipd-win via winget and returns the resolved usbipd path.
+    Returns $null when winget is unavailable or the install fails.
+    #>
+    [CmdletBinding()]
+    param([switch]$Interactive)
+
+    $before = Find-Usbipd
+    if ($before) { return $before }
+
+    $winget = Get-Command 'winget.exe' -ErrorAction SilentlyContinue
+    if (-not $winget) {
+        Write-Warning 'winget not available; install usbipd-win manually: https://github.com/dorssel/usbipd-win/releases'
+        return $null
+    }
+
+    $arguments = @()
+    if ($Interactive) { $arguments += '--interactive' }
+    $arguments += @('--exact', 'usbipd.usbipd-win')
+    & $winget.Source install @arguments
+    return (Find-Usbipd)
+}
+
+function Register-UsbShareScheduledTask {
+    <#
+    .SYNOPSIS
+    Registers the SYSTEM scheduled task that keeps configured devices
+    shared at boot and every 5 minutes. Requires elevation.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [string]$InstallDir
+    )
+
+    $taskName = 'USB Share Bridge Sync'
+    $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    if ($existing) { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false }
+
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument (
+        '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" sync' -f (Join-Path $InstallDir 'usb-share.ps1')
+    )
+    $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $startupTrigger = New-ScheduledTaskTrigger -AtStartup
+    $repeatTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
+        -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
+        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+        -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+
+    $null = Register-ScheduledTask -TaskName $taskName -Action $action `
+        -Principal $principal -Trigger $startupTrigger, $repeatTrigger -Settings $settings
+    return $taskName
+}
+
+function New-UsbShareShortcut {
+    <#
+    .SYNOPSIS
+    Creates a Start Menu shortcut that launches the GUI (elevated prompt
+    appears unless already elevated).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [string]$TargetScript,
+        [string]$ShortcutPath = (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\USB Share Bridge.lnk')
+    )
+
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($ShortcutPath)
+    $shortcut.TargetPath = Join-Path $PSHOME 'powershell.exe'
+    $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -Sta -File `"$TargetScript`""
+    $shortcut.WorkingDirectory = Split-Path -Parent $TargetScript
+    $shortcut.Description = 'USB Share Bridge - select USB devices to share with HAOS'
+    $shortcut.IconLocation = "$([Environment]::SystemDirectory)\shell32.dll,-16739"
+    $shortcut.Save()
+    return $ShortcutPath
+}
+
+function Remove-UsbShareShortcut {
+    [CmdletBinding()]
+    param(
+        [string]$ShortcutPath = (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\USB Share Bridge.lnk')
+    )
+    if (Test-Path -LiteralPath $ShortcutPath) {
+        Remove-Item -LiteralPath $ShortcutPath -Force
+        return $true
+    }
+    return $false
 }
 
 # ---------------------------------------------------------------------------
@@ -492,6 +630,10 @@ Export-ModuleMember -Function `
     Get-UsbDeviceList,
     Resolve-UsbShareDevice,
     Sync-UsbShare,
+    Install-UsbipdWin,
+    Register-UsbShareScheduledTask,
+    New-UsbShareShortcut,
+    Remove-UsbShareShortcut,
     Watch-UsbShare,
     Set-UsbShareFirewall,
     Get-UsbShareStatus

@@ -13,30 +13,39 @@ devices) plugged into the host.
 
 ## 1. Windows host — install and share devices
 
-Open an elevated PowerShell in the repo's `windows/` folder:
+Open PowerShell in the repo's `windows/` folder and launch the GUI (it
+asks for elevation itself):
 
 ```powershell
-.\Install.ps1
+.\UsbShareGui.ps1
 ```
 
-This verifies or installs usbipd-win (via winget), copies the app to
-`C:\ProgramFiles\USBShare`, creates `C:\ProgramData\USBShare\config.json`,
-and registers a scheduled task that keeps your devices shared at boot and
-every 5 minutes.
+If usbipd-win isn't installed yet, the GUI shows an **Install usbipd-win**
+button — click it once and the winget installer runs in a console window.
 
-Now find your devices and fill in the config:
+Then:
+
+1. Tick the checkbox next to each device you want to share (e.g. the
+   RTL-SDR). Checked = shared; unchecking stops sharing it.
+2. Under **Allowed client IP(s)**, enter the HAOS VM's IP — that is what
+   scopes the firewall rule for TCP 3240.
+3. Click **Save & Apply**. The GUI writes
+   `C:\ProgramData\USBShare\config.json`, binds newly selected devices,
+   unbinds deselected ones, and refreshes the scoped firewall rule. The
+   activity log at the bottom confirms each step.
+4. Optionally click **Register auto-share task** (or run `Install.ps1`
+   once) so devices re-share automatically at boot and every 5 minutes,
+   even with the GUI closed.
+
+For a headless or scripted setup, `Install.ps1` performs the full
+installation (usbipd-win via winget, app copy to
+`C:\Program Files\USBShare`, config starter, scheduled task, firewall,
+Start Menu shortcut), and `usb-share.ps1` exposes the same operations as
+commands:
 
 ```powershell
 cd "C:\Program Files\USBShare"
-.\usb-share.ps1 list --json
-notepad C:\ProgramData\USBShare\config.json
-```
-
-Put each device's `VidPid` (e.g. `0bda:2838`) in `devices`, and put the
-HAOS VM's IP in `allowedClients` — that is what scopes the firewall rule
-for TCP 3240. Then verify and share:
-
-```powershell
+.\usb-share.ps1 list --json       # find VID:PID values
 .\usb-share.ps1 doctor
 .\usb-share.ps1 sync
 ```
