@@ -1,0 +1,11 @@
+{
+  "server": "127.0.0.1:3240",
+  "attach_mode": "all",
+  "devices": [],
+  "poll_interval": 30,
+  "attach_delay": 0,
+  "attach_retries": 1,
+  "auto_reattach": true,
+  "rediscover_cycles": 20,
+  "log_level": "info"
+}

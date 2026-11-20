@@ -125,10 +125,40 @@ usbb::read_config_devices() {
     done < <(jq -r '(. // [])[] | [(.name // "?"), (.id // "")] | @tsv' <<< "$json")
 }
 
+usbb::usbids_name() {
+    # Echo "Vendor Product" for a VID:PID from the hwdata usb.ids database,
+    # if available. Prints nothing when unknown.
+    local vidpid="$1"
+    local file="/usr/share/hwdata/usb.ids"
+    if [ ! -r "$file" ]; then
+        file="/usr/share/usb.ids"
+    fi
+    [ -r "$file" ] || return 0
+    awk -v v="${vidpid%%:*}" -v p="${vidpid##*:}" '
+        BEGIN { inv = 0 }
+        /^[0-9a-f][0-9a-f][0-9a-f][0-9a-f][ \t]/ {
+            if (inv) { inv = 0 }
+            if ($1 == v) {
+                vendor = $0
+                sub(/^[0-9a-f]+[ \t]+/, "", vendor)
+                inv = 1
+            }
+            next
+        }
+        inv && /^\t/ && $1 == p {
+            product = $0
+            sub(/^\t[0-9a-f]+[ \t]+/, "", product)
+            print vendor " " product
+            exit
+        }
+    ' "$file" 2>/dev/null
+    return 0
+}
+
 # Resolve configured devices against the server; write the attach manifest.
 # Returns 1 only when the server cannot be reached (old manifest is kept).
 usbb::discover() {
-    local server devices_raw found=0 i name id busid vidpid
+    local server devices_raw found=0 i name id busid vidpid mode desc idsname
     server="$(usbb::config_default server "")"
     if [ -z "$server" ] || [ "$server" = "null" ]; then
         usbb::log error "No 'server' configured - set it in the add-on options."
@@ -143,8 +173,37 @@ usbb::discover() {
 
     local -a names=() ids=()
     usbb::read_config_devices names ids
+    mode="$(usbb::config_default attach_mode all)"
+    if [ "$mode" != "all" ] && [ "$mode" != "select" ]; then
+        usbb::log error "Invalid attach_mode '$mode' - expected 'all' or 'select'."
+        return 1
+    fi
+
     local tmp="${MANIFEST}.tmp"
     : > "$tmp"
+
+    if [ "$mode" = "all" ]; then
+        # Default: mirror whatever the Windows side shares. The Windows GUI
+        # checkboxes are the single source of truth - nothing to type here.
+        while IFS=$'\t' read -r busid desc vidpid; do
+            [ -n "${busid:-}" ] || continue
+            name="$desc"
+            if idsname="$(usbb::usbids_name "$vidpid")" && [ -n "$idsname" ]; then
+                case "$desc" in
+                    Bulk*|Interface*|Unknown*|USB*)
+                        # Raw usbipd strings carry no identity; use usb.ids.
+                        name="$idsname"
+                        ;;
+                esac
+            fi
+            printf '%s\t%s\t%s\t%s\n' "$server" "$busid" "$name" "$vidpid" >> "$tmp"
+            found=$((found + 1))
+            usbb::log info "Will attach: $name ($vidpid, server busid $busid)"
+        done <<< "$devices_raw"
+        mv "$tmp" "$MANIFEST"
+        usbb::log info "Discovery finished: $found shared device(s) on server $server (attach_mode=all)."
+        return 0
+    fi
 
     for i in "${!names[@]}"; do
         name="${names[$i]}"

@@ -10,11 +10,18 @@ if [ -z "${SERVER}" ]; then
     bashio::exit.nok "Option 'server' is required - set it in the add-on options."
 fi
 
+ATTACH_MODE="$(usbb::config_default attach_mode all)"
+if [ "${ATTACH_MODE}" != "all" ] && [ "${ATTACH_MODE}" != "select" ]; then
+    bashio::exit.nok "Option 'attach_mode' must be 'all' or 'select' (got '${ATTACH_MODE}')."
+fi
+
 DEVICES_JSON="$(usbb::config_devices_json)"
 DEVICE_COUNT="$(jq -r 'length' <<< "${DEVICES_JSON}")"
-if [ "${DEVICE_COUNT}" -eq 0 ]; then
-    bashio::exit.nok "Option 'devices' is empty - add at least one device (VID:PID or bus id)."
+if [ "${ATTACH_MODE}" = "select" ] && [ "${DEVICE_COUNT}" -eq 0 ]; then
+    bashio::exit.nok "attach_mode is 'select' but 'devices' is empty - add devices, or switch attach_mode to 'all' to attach everything the server shares."
 fi
+
+usbb::log info "Attach mode: ${ATTACH_MODE}."
 
 while IFS=$'\t' read -r name id; do
     if [ -z "$id" ]; then

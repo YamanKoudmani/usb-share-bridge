@@ -118,11 +118,26 @@ Configure the add-on options:
 
 ```yaml
 server: 192.168.x.x        # Windows host IP (or Tailscale IP); "IP:3240" also works
+attach_mode: all           # default - attach everything shared on the Windows side
+```
+
+That is the entire HAOS-side configuration. With the default
+`attach_mode: all`, the add-on attaches **every device the Windows GUI
+has ticked** — the checkboxes are the single source of truth, so nothing
+else is typed here. Devices appear under friendly usb.ids names in the
+logs (e.g. "Realtek Semiconductor Corp. RTL2838 DVB-T" instead of raw
+usbipd strings), and unchecking a device on Windows stops sharing it, so
+it drops off here too.
+
+Only if this server feeds several HAOS instances (or you want this VM to
+ignore some shared devices) switch to `attach_mode: select` and list
+devices manually:
+
+```yaml
+attach_mode: select
 devices:
   - name: RTL-SDR
-    id: 0bda:2838          # same VID:PID as on the Windows side
-  - name: Z-Stick
-    id: 0658:0200
+    id: 0bda:2838          # VID:PID (preferred) or server bus id like 1-1
 ```
 
 Start the add-on. On boot it verifies the `vhci-hcd` kernel module,

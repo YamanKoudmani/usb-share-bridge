@@ -5,3 +5,4 @@ windows/tests/bin/bind-log.txt
 windows/tests/bin/unbind-log.txt
 windows/config.json
 usb_share_bridge/tests/data/usb-bridge-manifest.tsv
+usb_share_bridge/tests/data-all/usb-bridge-manifest.tsv

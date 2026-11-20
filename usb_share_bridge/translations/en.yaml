@@ -5,12 +5,17 @@ configuration:
       Address of the USB/IP server on your Windows host. Use "IP" (default
       port 3240) or "IP:PORT". Over the Internet, use the Tailscale or
       WireGuard address.
+  attach_mode:
+    name: Attach mode
+    description: >-
+      "all" (default) attaches every device the Windows side shares - you
+      pick devices with the checkboxes in the Windows GUI and never type
+      anything here. "select" attaches only the devices listed below.
   devices:
     name: Devices
     description: >-
-      Devices to attach. "id" accepts VID:PID (e.g. 0bda:2838, preferred) or
-      a server bus ID (e.g. 1-1). Run "usb-share.ps1 list --json" on Windows
-      to find the VID:PID.
+      Only used when Attach mode is "select". "id" accepts VID:PID
+      (e.g. 0bda:2838, preferred) or a server bus ID (e.g. 1-1).
   poll_interval:
     name: Poll interval (seconds)
     description: How often attached devices are verified.

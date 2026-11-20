@@ -59,12 +59,15 @@ UAC prompt. Prefer a terminal? The same operations are available as
 commands (`usb-share.ps1 list/sync/doctor/firewall`), and headless setup
 works via `powershell -ExecutionPolicy Bypass -File windows\Install.ps1`.
 
-On the **HAOS VM**: push this repo to GitHub, add it as an add-on repository
-in Home Assistant (Settings → Add-ons → Add-on Store → ⋮ → Repositories),
-install **USB Share Bridge**, set `server` to the Windows host IP and the
-same device IDs (use the VID:PID values shown in the GUI), then start it.
-Devices appear in Settings → System → Hardware and work like local USB
-devices.
+On the **HAOS VM**: add this repo as an add-on repository in Home
+Assistant (Settings → Add-ons → Add-on Store → ⋮ → Repositories), install
+**USB Share Bridge**, and set `server` to the Windows host IP. That is
+all the typing there is: by default the add-on attaches **every device
+you've ticked in the Windows GUI** — the checkboxes are the single source
+of truth on both sides, so there is no device list to fill in. (An
+advanced `attach_mode: select` exists for attaching only specific
+devices, e.g. when one server feeds several clients.) Devices appear in
+Settings → System → Hardware and work like local USB devices.
 
 Full instructions, Internet/tunnel setup, and troubleshooting:
 [docs/setup-hyper-v-haos.md](docs/setup-hyper-v-haos.md).

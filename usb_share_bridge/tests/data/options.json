@@ -1,5 +1,6 @@
 {
   "server": "127.0.0.1:3240",
+  "attach_mode": "select",
   "devices": [
     { "name": "RTL-SDR", "id": "0bda:2838" },
     { "name": "CP210x serial", "id": "10c4:ea60" },

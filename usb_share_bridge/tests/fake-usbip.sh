@@ -6,6 +6,8 @@ if [ "$1" = "list" ]; then
     printf -- '          : /sys/devices/pci0000:00/0000:00:14.0/usb1/1-1\n'
     printf -- '     2-2: Silicon Labs : CP210x UART Bridge (10c4:ea60)\n'
     printf -- '          : /sys/devices/pci0000:00/0000:00:14.0/usb2/2-2\n'
+    printf -- '     3-1: Bulk-In, Interface (0bda:2832)\n'
+    printf -- '          : /sys/devices/pci0000:00/0000:00:14.0/usb3/3-1\n'
     exit 0
 fi
 exit 1

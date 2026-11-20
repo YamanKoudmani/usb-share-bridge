@@ -1,6 +1,6 @@
 name: "USB Share Bridge"
 description: "USB/IP client that attaches USB devices shared from a Windows (usbipd-win) or Linux server so Home Assistant sees them as local devices."
-version: "1.0.0"
+version: "1.1.0"
 slug: "usb_share_bridge"
 arch:
   - aarch64
@@ -21,8 +21,9 @@ privileged:
   - SYS_RAWIO
 options:
   server: "192.168.1.100"
+  attach_mode: all
   devices:
-    - name: "RTL-SDR"
+    - name: "Optional in select mode"
       id: "0bda:2838"
   poll_interval: 30
   attach_delay: 2
@@ -32,6 +33,7 @@ options:
   log_level: info
 schema:
   server: str
+  attach_mode: list(all|select)
   devices:
     - name: str
       id: str
