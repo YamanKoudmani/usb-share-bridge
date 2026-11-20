@@ -1,0 +1,10 @@
+# Windows-side scripts work best with CRLF; everything that runs inside
+# the Linux add-on container must stay LF or bash/s6 will fail.
+* text=auto
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+usb_share_bridge/Dockerfile text eol=lf
+usb_share_bridge/apparmor.txt text eol=lf
+usb_share_bridge/config.yaml text eol=lf
+usb_share_bridge/rootfs/** text eol=lf
