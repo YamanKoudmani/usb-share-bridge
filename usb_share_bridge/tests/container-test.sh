@@ -21,6 +21,13 @@ done
 
 echo '== kernel module check (test mode) =='
 /etc/cont-init.d/05-kernel-module.sh
+echo '  OK  sysfs check warns (does not fail) when the path is absent'
+
+echo '== kernel module check with fake vhci sysfs =='
+mkdir -p /tmp/fake-vhci
+echo /tmp/fake-vhci > /run/s6/container_environment/USBBRIDGE_VHCI_SYSFS
+/etc/cont-init.d/05-kernel-module.sh
+echo '  OK  sysfs check passes when the control interface is present'
 
 echo '== config check =='
 /etc/cont-init.d/10-config-check.sh

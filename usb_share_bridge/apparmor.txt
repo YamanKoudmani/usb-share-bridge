@@ -3,7 +3,7 @@
 profile usb_share_bridge flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
-  # Allow the usual file operations; access to USB/IP state lives in /sys and /dev/vhci
+  # Allow the usual file operations; USB/IP state lives in sysfs
   file,
   signal (send) set=(kill,term,int,hup,cont),
 
@@ -49,7 +49,6 @@ profile usb_share_bridge flags=(attach_disconnected,mediate_deleted) {
   /sys/bus/usb/devices/** rw,
   /sys/class/usb_device/** rwk,
   /sys/module/vhci_hcd/** rw,
-  /dev/vhci rw,
   /dev/bus/usb/** rw,
   /proc/** r,
 

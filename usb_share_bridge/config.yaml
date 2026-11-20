@@ -1,6 +1,6 @@
 name: "USB Share Bridge"
 description: "USB/IP client that attaches USB devices shared from a Windows (usbipd-win) or Linux server so Home Assistant sees them as local devices."
-version: "1.1.0"
+version: "1.1.1"
 slug: "usb_share_bridge"
 arch:
   - aarch64
@@ -10,8 +10,6 @@ boot: auto
 init: false
 apparmor: true
 usb: true
-devices:
-  - /dev/vhci
 kernel_modules:
   - vhci-hcd
 privileged:

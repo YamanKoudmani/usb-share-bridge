@@ -36,7 +36,7 @@ than reinventing it.
 | [VirtualHere](https://www.virtualhere.com/) | Windows, Linux, macOS | Windows, Linux, macOS | Closed source, commercial/licensed client | Polished product with compression and its own protocol. Good benchmark for UX; licensing and closed source are the tradeoffs. |
 | [USB Network Gate (Electronic Team)](https://www.electronic.us/products/usb-network-gate/) | Windows, Linux, macOS | Windows, Linux, macOS | Closed source, roughly USD 160 per shared device (as of Nov 2026) | Feature-rich; per-device pricing. |
 | [Linux USB/IP tools](https://github.com/torvalds/linux/tree/master/tools/usb/usbip) | Linux | Linux | Open source, in-kernel | The reference protocol implementation. |
-| [hassio-usbip-mounter](https://github.com/irakhlin/hassio-usbip-mounter) / [ha-usbip-client](https://github.com/cryptedx/ha-usbip-client) | n/a (client only) | HAOS add-on | Open source | Proves the HAOS client path: add-ons may load `vhci-hcd` via `kernel_modules:` in the add-on manifest and talk to `/dev/vhci` from a privileged container. Our add-on follows these proven mechanics. |
+| [hassio-usbip-mounter](https://github.com/irakhlin/hassio-usbip-mounter) / [ha-usbip-client](https://github.com/cryptedx/ha-usbip-client) | n/a (client only) | HAOS add-on | Open source | Proves the HAOS client path: add-ons may load `vhci-hcd` via `kernel_modules:` in the add-on manifest and drive it from a privileged container. The client interface is sysfs — there is no `/dev/vhci` character device on modern kernels ([vhci_hcd.c](https://github.com/torvalds/linux/blob/master/drivers/usb/usbip/vhci_hcd.c)). |
 
 ## Security posture of USB/IP
 
@@ -70,10 +70,11 @@ device (Z-wave sticks, serial adapters, card readers), not just SDRs.
 
 - usbipd-win project, install/usage documentation (bind/list, Linux client
   attach) — via project README and docs.
-- HAOS add-on container mechanics (`kernel_modules`, `/dev/vhci`, Alpine
+- HAOS add-on container mechanics (`kernel_modules`, Alpine
   `linux-tools-usbip` package, sysfs remount requirement, privileged
   profile) — via the source of a working, published add-on
-  (cryptedx/ha-usbip-client, cloned and inspected).
+  (cryptedx/ha-usbip-client, cloned and inspected), plus the kernel
+  source confirming the sysfs (not /dev) client interface.
 - Commercial alternatives' existence and rough positioning — via vendor
   pages and community discussion threads.
 
