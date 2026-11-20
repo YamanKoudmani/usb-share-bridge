@@ -1,6 +1,6 @@
 name: "USB Share Bridge"
-url: "https://github.com/example/usb-share-bridge"
-maintainer: "USB Share Bridge contributors"
+url: "https://github.com/YamanKoudmani/usb-share-bridge"
+maintainer: "Yaman Koudmani"
 description: >
   A paired USB/IP server manager (Windows) and Home Assistant OS client
   add-on. Shares real USB devices from a Windows Hyper-V host to a HAOS
@@ -10,5 +10,5 @@ arch:
   - aarch64
   - amd64
 category: "Remote Access & Device Management"
-documentation: "https://github.com/example/usb-share-bridge/blob/main/README.md"
+documentation: "https://github.com/YamanKoudmani/usb-share-bridge/blob/main/README.md"
 license: "MIT"
